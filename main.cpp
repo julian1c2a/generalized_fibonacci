@@ -5,7 +5,7 @@ int main() {
     using namespace gfib;
     constexpr std::array<std::int64_t,1> coeffs_order_0{2};
     constexpr std::array<std::int64_t,0> initvals_order_0{};
-    constexpr std::array<std::int64_t,2> coeffs_order_1{2,-1};
+    constexpr std::array<std::int64_t,2> coeffs_order_1{3,-1};
     constexpr std::array<std::int64_t,1> initvals_order_1{1};
 
     // Orden 0: función constante f(n) = coef_0
