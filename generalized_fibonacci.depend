@@ -1,0 +1,12 @@
+# depslib dependency file v1.0
+1792167681 source:c:\msys64\home\julia\cpp_projects\generalized_fibonacci\main.cpp
+	<iostream>
+	"include/gfib.hpp"
+
+1792167861 c:\msys64\home\julia\cpp_projects\generalized_fibonacci\include\gfib.hpp
+	<type_traits>
+	<concepts>
+	<array>
+	<vector>
+	<cstdint>
+
