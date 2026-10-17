@@ -4,4 +4,8 @@
 *.layout
 bin/Debug/generalized_fibonacci.exe
 *.exe
-bin/Debug/generalized_fibonacci.exe
+*.gcno
+*.gcda
+*.gcov
+*.d
+CMakeFiles/
