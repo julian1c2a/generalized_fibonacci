@@ -1,58 +1,41 @@
 #include "include/gfib.hpp"
 #include <iostream>
 
+constexpr std::array<std::int64_t, 1> coeffs_order_0{2};
+constexpr std::array<std::int64_t, 0> initvals_order_0{};
+constexpr std::array<std::int64_t, 2> coeffs_order_1{3, -1};
+constexpr std::array<std::int64_t, 1> initvals_order_1{1};
+constexpr std::array<std::int64_t, 3> coeffs_order_2{1, 1, 0};
+constexpr std::array<std::int64_t, 2> initvals_order_2{1, 1};
+constexpr std::array<std::int64_t, 4> coeffs_order_3{0, 1, 1, 0};
+constexpr std::array<std::int64_t, 3> initvals_order_3{1, 1, 1};
+
+// Define un generador para cualquier orden:
+template <auto coeffs, auto initvals>
+constexpr auto make_fib =
+    [](auto n) { return gfib::compute_sequence<coeffs, initvals>(n); };
+
+// Creas la función específica para la secuencia que quieras:
+constexpr auto fib_0 = make_fib<coeffs_order_0, initvals_order_0>;
+constexpr auto fib_1 = make_fib<coeffs_order_1, initvals_order_1>;
+constexpr auto fib_2 = make_fib<coeffs_order_2, initvals_order_2>;
+constexpr auto fib_3 = make_fib<coeffs_order_3, initvals_order_3>;
+
+void show_fib(auto func, std::size_t n) {
+  std::cout << "\n (";
+  for (std::size_t i = 0; i <= n; ++i) {
+    std::cout << func(i);
+    if (i != n)
+      std::cout << ", ";
+  }
+  std::cout << ")\n";
+}
+
 int main() {
   using namespace gfib;
-  constexpr std::array<std::int64_t, 1> coeffs_order_0{2};
-  constexpr std::array<std::int64_t, 0> initvals_order_0{};
-  constexpr std::array<std::int64_t, 2> coeffs_order_1{3, -1};
-  constexpr std::array<std::int64_t, 1> initvals_order_1{1};
-  constexpr std::array<std::int64_t, 3> coeffs_order_2{1, 1, 0};
-  constexpr std::array<std::int64_t, 2> initvals_order_2{1, 1};
 
   // Orden 0: función constante f(n) = coef_0
-  std::cout << "f(5) con orden 0 (constante): \n"
-            << compute_sequence<0, std::int64_t, std::uint16_t, coeffs_order_0,
-                                initvals_order_0>(0)
-            << "\n"
-            << compute_sequence<0, std::int64_t, std::uint16_t, coeffs_order_0,
-                                initvals_order_0>(1)
-            << "\n"
-            << compute_sequence<0, std::int64_t, std::uint16_t, coeffs_order_0,
-                                initvals_order_0>(2)
-            << "\n"
-            << compute_sequence<0, std::int64_t, std::uint16_t, coeffs_order_0,
-                                initvals_order_0>(3)
-            << "\n";
-  // Orden 1: función f(n) = coef_1*f(n-1)+coef_0
-  std::cout << "f(5) con orden 1 (depende de f(n-1) de forma afín): \n"
-            << compute_sequence<1, std::int64_t, std::uint16_t, coeffs_order_1,
-                                initvals_order_1>(0)
-            << "\n" // 1
-            << compute_sequence<1, std::int64_t, std::uint16_t, coeffs_order_1,
-                                initvals_order_1>(1)
-            << "\n" // 3*1-1 = 2
-            << compute_sequence<1, std::int64_t, std::uint16_t, coeffs_order_1,
-                                initvals_order_1>(2)
-            << "\n" // 3*2-1 = 5
-            << compute_sequence<1, std::int64_t, std::uint16_t, coeffs_order_1,
-                                initvals_order_1>(3)
-            << "\n"; // 3*5-1 = 14
-  // Orden 2: función f(n) = coef_2*f(n-2)+coef_1*f(n-1)+coef_0
-  //                       = 1*f(n-1)+1*f(n-2)+0
-  std::cout << "f(5) con orden 2 (depende de f(n-1) y de f(n-2) fibonacci): \n"
-            << compute_sequence<2, std::int64_t, std::uint16_t, coeffs_order_2,
-                                initvals_order_2>(0)
-            << "\n" // 1
-            << compute_sequence<2, std::int64_t, std::uint16_t, coeffs_order_2,
-                                initvals_order_2>(1)
-            << "\n" // 1
-            << compute_sequence<2, std::int64_t, std::uint16_t, coeffs_order_2,
-                                initvals_order_2>(2)
-            << "\n" // 1 + 1 = 2
-            << compute_sequence<2, std::int64_t, std::uint16_t, coeffs_order_2,
-                                initvals_order_2>(3)
-            << "\n"; // 2 + 1 = 3
+  show_fib(fib_0, 5);
 
   return 0;
 }
