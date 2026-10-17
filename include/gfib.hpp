@@ -13,11 +13,11 @@ template <typename T>
 concept Arithmetic = std::integral<T> || std::floating_point<T>;
 
 // Sobrecarga concisa deducida (C++20)
-template <auto coeffs, auto initvals, std::integral N = std::size_t>
-  requires (coeffs.size() == initvals.size() + 1) &&
-           std::same_as<typename decltype(coeffs)::value_type,
-                        typename decltype(initvals)::value_type> &&
-           Arithmetic<typename decltype(coeffs)::value_type>
+template <auto coeffs, auto initvals, std::unsigned_integral N = std::size_t>
+  requires(coeffs.size() == initvals.size() + 1) &&
+          std::same_as<typename decltype(coeffs)::value_type,
+                       typename decltype(initvals)::value_type> &&
+          Arithmetic<typename decltype(coeffs)::value_type>
 constexpr auto compute_sequence(N n) noexcept {
   constexpr std::size_t ORDER = initvals.size();
   using T = typename decltype(coeffs)::value_type;
@@ -64,8 +64,7 @@ constexpr auto compute_sequence(N n) noexcept {
 
 // Plantilla con ORDER explícito y tipos genéricos
 template <std::size_t ORDER, Arithmetic T, std::unsigned_integral N,
-          std::array<T, ORDER + 1> coeffs,
-          std::array<T, ORDER> initvals>
+          std::array<T, ORDER + 1> coeffs, std::array<T, ORDER> initvals>
 constexpr T compute_sequence(N n) noexcept {
   return compute_sequence<coeffs, initvals, N>(n);
 }
