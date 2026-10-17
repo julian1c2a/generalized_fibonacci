@@ -34,8 +34,10 @@ void show_fib(auto func, std::size_t n) {
 int main() {
   using namespace gfib;
 
-  // Orden 0: función constante f(n) = coef_0
-  show_fib(fib_0, 5);
+  show_fib(fib_0, 10);
+  show_fib(fib_1, 10);
+  show_fib(fib_2, 10);
+  show_fib(fib_3, 10);
 
   return 0;
 }
