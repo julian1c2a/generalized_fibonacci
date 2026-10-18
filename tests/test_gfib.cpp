@@ -124,6 +124,31 @@ int main() {
     std::cout << "[OK] get_list y comportamiento de expansión de caché verificados.\n";
   }
 
+  // 3. Verificación de secuencias con números complejos (std::complex)
+  {
+    using C = std::complex<double>;
+    // Recurrencia: x_n = i * x_{n-1} + 0, x_0 = 1
+    // Ciclo de periodo 4: 1, i, -1, -i, 1, i, -1, -i...
+    const std::vector<C> c_complex = {C(0.0, 1.0), C(0.0, 0.0)};
+    const std::vector<C> i_complex = {C(1.0, 0.0)};
+
+    DynamicMemoizedSequence<C> memo_c(c_complex, i_complex);
+
+    assert(std::abs(memo_c(0) - C(1.0, 0.0)) < 1e-12);
+    assert(std::abs(memo_c(1) - C(0.0, 1.0)) < 1e-12);
+    assert(std::abs(memo_c(2) - C(-1.0, 0.0)) < 1e-12);
+    assert(std::abs(memo_c(3) - C(0.0, -1.0)) < 1e-12);
+    assert(std::abs(memo_c(4) - C(1.0, 0.0)) < 1e-12);
+
+    // Comparar con compute_sequence directa sobre spans
+    for (std::size_t n = 0; n <= 15; ++n) {
+      C expected = compute_sequence(std::span<const C>(c_complex), std::span<const C>(i_complex), n);
+      assert(std::abs(memo_c(n) - expected) < 1e-12);
+    }
+
+    std::cout << "[OK] Secuencias generalizadas con numeros complejos (std::complex) verificadas.\n";
+  }
+
   std::cout << "\n¡Todos los tests de gfib pasaron exitosamente!\n";
   return 0;
 }

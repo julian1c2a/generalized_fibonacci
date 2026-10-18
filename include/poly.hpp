@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <complex>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -14,13 +15,32 @@
 
 namespace poly {
 
-// Concepto para tipos que admiten operaciones aritméticas básicas
+// Trait para identificar std::complex
 template <typename T>
-concept Arithmetic = requires(T a, T b) {
-  { a + b } -> std::convertible_to<T>;
-  { a - b } -> std::convertible_to<T>;
-  { a * b } -> std::convertible_to<T>;
-};
+struct is_complex : std::false_type {};
+
+template <typename T>
+struct is_complex<std::complex<T>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_complex_v = is_complex<std::remove_cvref_t<T>>::value;
+
+template <typename T>
+concept ComplexNumber = is_complex_v<T>;
+
+// Concepto para tipos que admiten operaciones aritméticas básicas (incluye enteros, flotantes y complejos)
+template <typename T>
+concept Arithmetic = std::integral<T> || std::floating_point<T> || ComplexNumber<T> ||
+  requires(T a, T b) {
+    { a + b } -> std::convertible_to<T>;
+    { a - b } -> std::convertible_to<T>;
+    { a * b } -> std::convertible_to<T>;
+    { a / b } -> std::convertible_to<T>;
+  };
+
+// Deducción natural del tipo resultante al evaluar un polinomio de coeficientes CoeffT con argumento ArgT
+template <typename CoeffT, typename ArgT>
+using eval_result_t = decltype(std::declval<CoeffT>() + std::declval<CoeffT>() * std::declval<ArgT>());
 
 /* ==========================================================================
  * ALGORITMOS DE EVALUACIÓN SOBRE SPANS (Zero-overhead, Constexpr)
@@ -35,7 +55,7 @@ concept Arithmetic = requires(T a, T b) {
  */
 template <typename T, typename U>
 constexpr auto eval_horner(std::span<const T> coeffs, const U& x) {
-  using ResultType = std::common_type_t<T, U>;
+  using ResultType = eval_result_t<T, U>;
   if (coeffs.empty()) {
     return ResultType{0};
   }
@@ -57,7 +77,7 @@ constexpr auto eval_horner(std::span<const T> coeffs, const U& x) {
  */
 template <typename T, typename U>
 constexpr auto eval_horner_with_derivative(std::span<const T> coeffs, const U& x) {
-  using ResultType = std::common_type_t<T, U>;
+  using ResultType = eval_result_t<T, U>;
   if (coeffs.empty()) {
     return std::pair<ResultType, ResultType>{ResultType{0}, ResultType{0}};
   }
@@ -86,7 +106,7 @@ constexpr auto eval_horner_with_derivative(std::span<const T> coeffs, const U& x
 template <typename T, typename U>
 constexpr auto eval_horner_all_derivatives(std::span<const T> coeffs, const U& x,
                                           std::size_t max_order) {
-  using ResultType = std::common_type_t<T, U>;
+  using ResultType = eval_result_t<T, U>;
   if (coeffs.empty()) {
     return std::vector<ResultType>{};
   }
@@ -113,7 +133,7 @@ constexpr auto eval_horner_all_derivatives(std::span<const T> coeffs, const U& x
   ResultType factorial = ResultType{1};
   for (std::size_t k = 0; k < orders; ++k) {
     if (k > 0) {
-      factorial = factorial * static_cast<ResultType>(k);
+      factorial = factorial * ResultType(k);
     }
     derivatives[k] = b[k] * factorial;
   }
@@ -125,7 +145,7 @@ namespace detail {
 
 template <typename T, typename U>
 constexpr auto eval_estrin_recursive(std::span<const T> coeffs, const U& x) {
-  using ResultType = std::common_type_t<T, U>;
+  using ResultType = eval_result_t<T, U>;
   const std::size_t n = coeffs.size();
 
   if (n == 0) return ResultType{0};
@@ -146,7 +166,7 @@ constexpr auto eval_estrin_recursive(std::span<const T> coeffs, const U& x) {
     }
   }
 
-  const U x2 = x * x;
+  const auto x2 = x * x;
   return eval_estrin_recursive(std::span<const ResultType>(reduced), x2);
 }
 
@@ -500,7 +520,7 @@ public:
     } else {
       StaticPoly<T, Degree - 1> res{};
       for (std::size_t i = 1; i <= Degree; ++i) {
-        res[i - 1] = coeffs_[i] * static_cast<T>(i);
+        res[i - 1] = coeffs_[i] * T(i);
       }
       return res;
     }
@@ -693,7 +713,7 @@ public:
     }
     std::vector<T> res(coeffs_.size() - 1);
     for (std::size_t i = 1; i < coeffs_.size(); ++i) {
-      res[i - 1] = coeffs_[i] * static_cast<T>(i);
+      res[i - 1] = coeffs_[i] * T(i);
     }
     return DynamicPoly(std::move(res));
   }

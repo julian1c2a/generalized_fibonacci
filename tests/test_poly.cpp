@@ -120,6 +120,47 @@ int main() {
               << ", F_10=" << rem[1] << ").\n";
   }
 
+  // 5. Test de Polinomios y Evaluaciones con Números Complejos (std::complex)
+  {
+    using namespace std::complex_literals;
+    using C = std::complex<double>;
+
+    // a) Evaluar un polinomio real en la raíz compleja: P(x) = x^2 + 1 => P(i) == 0
+    StaticPoly<double, 2> p_real({1.0, 0.0, 1.0}); // 1 + x^2
+    C root_i = C(0.0, 1.0);
+    C val_i = p_real.eval(root_i);
+    assert(std::abs(val_i) < 1e-14);
+
+    // b) Polinomio con coeficientes complejos
+    // P(z) = (1 + 2i) + (3 - 1i)z + (1 + 0i)z^2
+    StaticPoly<C, 2> p_complex({C(1.0, 2.0), C(3.0, -1.0), C(1.0, 0.0)});
+    C z(2.0, 1.0);
+
+    C res_horner = p_complex.eval(z);
+    C res_estrin = p_complex.eval_estrin(z);
+    auto [res_p, res_dp] = p_complex.eval_with_derivative(z);
+
+    assert(std::abs(res_horner - res_estrin) < 1e-12);
+    assert(std::abs(res_horner - res_p) < 1e-12);
+
+    // Derivada formal compleja: P'(z) = (3 - 1i) + 2z
+    auto p_complex_der = p_complex.derivative();
+    C res_der = p_complex_der.eval(z);
+    assert(std::abs(res_dp - res_der) < 1e-12);
+
+    // c) Potenciación de polinomio complejo: (z + i)^3
+    DynamicPoly<C> poly_z_plus_i({C(0.0, 1.0), C(1.0, 0.0)}); // i + z
+    auto poly_cubed = poly_z_plus_i.pow(3);
+    // (z + i)^3 = z^3 + 3iz^2 - 3z - i
+    // Coeficientes en orden ascendente: {-i, -3, 3i, 1}
+    assert(std::abs(poly_cubed[0] - C(0.0, -1.0)) < 1e-12);
+    assert(std::abs(poly_cubed[1] - C(-3.0, 0.0)) < 1e-12);
+    assert(std::abs(poly_cubed[2] - C(0.0, 3.0)) < 1e-12);
+    assert(std::abs(poly_cubed[3] - C(1.0, 0.0)) < 1e-12);
+
+    std::cout << "[OK] Polinomios complejos y evaluaciones complejas (std::complex) verificados.\n";
+  }
+
   std::cout << "\n¡Todos los tests pasaron exitosamente!\n";
   return 0;
 }

@@ -2,60 +2,76 @@
 #define GFIB_HPP_INCLUDED
 
 #include <array>
+#include <complex>
 #include <concepts>
 #include <cstdint>
+#include <span>
 #include <type_traits>
 #include <vector>
 
 namespace gfib {
 
+// Trait para identificar std::complex
 template <typename T>
-concept Arithmetic = std::integral<T> || std::floating_point<T>;
+struct is_complex : std::false_type {};
 
-// Sobrecarga concisa deducida (C++20)
+template <typename T>
+struct is_complex<std::complex<T>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_complex_v = is_complex<std::remove_cvref_t<T>>::value;
+
+template <typename T>
+concept ComplexNumber = is_complex_v<T>;
+
+template <typename T>
+concept Arithmetic = std::integral<T> || std::floating_point<T> || ComplexNumber<T> ||
+  requires(T a, T b) {
+    { a + b } -> std::convertible_to<T>;
+    { a * b } -> std::convertible_to<T>;
+  };
+
+// Función genérica para calcular el término n-ésimo con coeficientes y valores pasados por span.
+// Soporta cualquier tipo aritmético (enteros, reales y complejos) sin requerir tipos estructurales de NTTP.
+template <Arithmetic T, std::size_t Extent1 = std::dynamic_extent,
+          std::size_t Extent2 = std::dynamic_extent, std::unsigned_integral N = std::size_t>
+constexpr T compute_sequence(std::span<const T, Extent1> coeffs, std::span<const T, Extent2> initvals, N n) {
+  const std::size_t order = initvals.size();
+  const std::size_t init_count = order;
+
+  if (static_cast<std::size_t>(n) < init_count) {
+    return initvals[n];
+  }
+
+  if (order == 0) {
+    return coeffs.empty() ? T{} : coeffs[0];
+  }
+
+  std::vector<T> sequence(std::max(static_cast<std::size_t>(n + 1), init_count));
+  for (std::size_t i = 0; i < init_count; ++i) {
+    sequence[i] = initvals[i];
+  }
+
+  for (std::size_t i = init_count; i <= static_cast<std::size_t>(n); ++i) {
+    T next_val = coeffs[order]; // Término independiente
+    for (std::size_t k = 0; k < order; ++k) {
+      const std::size_t prev_idx = i - 1 - k;
+      next_val += coeffs[k] * sequence[prev_idx];
+    }
+    sequence[i] = next_val;
+  }
+
+  return sequence[n];
+}
+
+// Sobrecarga concisa deducida en tiempo de compilación para tipos estructurales (C++20 NTTP)
 template <auto coeffs, auto initvals, std::unsigned_integral N = std::size_t>
   requires(coeffs.size() == initvals.size() + 1) &&
           std::same_as<typename decltype(coeffs)::value_type,
                        typename decltype(initvals)::value_type> &&
           Arithmetic<typename decltype(coeffs)::value_type>
 constexpr auto compute_sequence(N n) noexcept {
-  constexpr std::size_t ORDER = initvals.size();
-  using T = typename decltype(coeffs)::value_type;
-  constexpr std::size_t init_count = ORDER;
-
-  // Retornar directamente si n está en valores iniciales
-  if (static_cast<std::size_t>(n) < init_count) {
-    return initvals[n];
-  }
-
-  // Orden 0: función constante
-  if constexpr (ORDER == 0) {
-    return coeffs[0];
-  }
-
-  // Calcular iterativamente para n >= init_count
-  std::vector<T> sequence(
-      std::max(static_cast<std::size_t>(n + 1), init_count));
-
-  for (size_t i = 0; i < static_cast<size_t>(init_count); ++i) {
-    if (i <= static_cast<std::size_t>(n)) {
-      sequence[i] = initvals[i];
-    }
-  }
-
-  // Iterar desde init_count hasta n para generar términos secuenciales
-  for (std::size_t i = init_count; i <= static_cast<std::size_t>(n); ++i) {
-    T next_val = static_cast<T>(coeffs[ORDER]); // Término independiente
-
-    for (size_t k = 0; k < ORDER; ++k) {
-      const size_t prev_idx = static_cast<size_t>(i - 1 - k);
-      next_val += coeffs[k] * sequence[prev_idx];
-    }
-
-    sequence[i] = next_val;
-  }
-
-  return sequence[n];
+  return compute_sequence(std::span(coeffs), std::span(initvals), n);
 }
 
 // Plantilla con ORDER explícito y tipos genéricos
@@ -170,6 +186,59 @@ public:
   // Número total de términos cacheados (estáticos + dinámicos)
   std::size_t total_cached() const noexcept {
     return PRECOMPUTED_SIZE + dynamic_cache_.size();
+  }
+};
+
+/**
+ * @brief Generador con memoización dinámica para cualquier tipo aritmético (enteros, reales, complejos).
+ * Útil cuando los coeficientes no se pasan por plantilla NTTP o son tipos no estructurales como std::complex.
+ */
+template <Arithmetic T>
+class DynamicMemoizedSequence {
+public:
+  using value_type = T;
+
+private:
+  std::vector<T> coeffs_;
+  std::vector<T> initvals_;
+  std::vector<T> cache_;
+
+public:
+  DynamicMemoizedSequence(std::vector<T> coeffs, std::vector<T> initvals)
+      : coeffs_(std::move(coeffs)), initvals_(std::move(initvals)), cache_(initvals_) {}
+
+  DynamicMemoizedSequence(std::initializer_list<T> coeffs, std::initializer_list<T> initvals)
+      : coeffs_(coeffs), initvals_(initvals), cache_(initvals_) {}
+
+  value_type operator()(std::size_t n) {
+    const std::size_t order = initvals_.size();
+    if (n < cache_.size()) {
+      return cache_[n];
+    }
+    if (order == 0) {
+      return coeffs_.empty() ? T{} : coeffs_[0];
+    }
+
+    for (std::size_t i = cache_.size(); i <= n; ++i) {
+      T next_val = coeffs_[order]; // término independiente
+      for (std::size_t k = 0; k < order; ++k) {
+        const std::size_t prev_idx = i - 1 - k;
+        next_val += coeffs_[k] * cache_[prev_idx];
+      }
+      cache_.push_back(next_val);
+    }
+
+    return cache_[n];
+  }
+
+  std::vector<value_type> get_list(std::size_t count) {
+    if (count == 0) return {};
+    (*this)(count - 1);
+    return std::vector<value_type>(cache_.begin(), cache_.begin() + count);
+  }
+
+  std::size_t total_cached() const noexcept {
+    return cache_.size();
   }
 };
 
