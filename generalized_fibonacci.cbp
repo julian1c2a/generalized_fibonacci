@@ -33,7 +33,10 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="include/gfib.hpp" />
+		<Unit filename="include/poly.hpp" />
 		<Unit filename="main.cpp" />
+		<Unit filename="tests/test_gfib.cpp" />
+		<Unit filename="tests/test_poly.cpp" />
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>
