@@ -64,6 +64,8 @@ namespace test_compile_time {
 
 int main() {
   using namespace spec_functs;
+  using spec_functs::gamma;
+  using spec_functs::lgamma;
   std::cout << "--- Ejecutando tests de spec_functs.hpp ---\n";
 
   // 1. Exponencial natural (exp) y compleja
@@ -572,6 +574,52 @@ int main() {
     assert(d3.remainder == 0.0);
 
     std::cout << "[OK] Redondeos optimizados (ceil, floor, trunc, round) y parte fraccionaria (frac) verificados.\n";
+  }
+
+  // 14. Verificación de complex<T> parametrizado y wrappers con FloatFallback
+  {
+    // complex por defecto es std::complex<double>
+    complex<> z_def(1.0, 2.0);
+    static_assert(std::same_as<decltype(z_def), std::complex<double>>);
+    assert(z_def.real() == 1.0 && z_def.imag() == 2.0);
+
+    // complex con float
+    complex<float> z_flt(1.0f, 2.0f);
+    static_assert(std::same_as<decltype(z_flt), std::complex<float>>);
+    auto exp_flt = exp(z_flt);
+    static_assert(std::same_as<decltype(exp_flt), complex<float>>);
+
+    auto sin_flt = sin(z_flt);
+    static_assert(std::same_as<decltype(sin_flt), complex<float>>);
+
+    auto sqrt_flt = sqrt(z_flt);
+    static_assert(std::same_as<decltype(sqrt_flt), complex<float>>);
+
+    // Conversión de complex<int> con FloatFallback por defecto (double) y explícito (float)
+    std::complex<int> z_int(3, 4);
+    auto sqrt_int_def = spec_functs::sqrt(z_int);
+    static_assert(std::same_as<decltype(sqrt_int_def), complex<double>>);
+    assert(abs_val(sqrt_int_def.real() - 2.0) < 1e-12);
+    assert(abs_val(sqrt_int_def.imag() - 1.0) < 1e-12);
+
+    auto sqrt_int_flt = sqrt<float>(z_int);
+    static_assert(std::same_as<decltype(sqrt_int_flt), complex<float>>);
+    assert(abs_val(sqrt_int_flt.real() - 2.0f) < 1e-6f);
+    assert(abs_val(sqrt_int_flt.imag() - 1.0f) < 1e-6f);
+
+    auto ceil_int_flt = ceil<float>(z_int);
+    static_assert(std::same_as<decltype(ceil_int_flt), complex<float>>);
+
+    // gamma / tgamma con float explícito
+    auto g_flt = tgamma<float>(4);
+    static_assert(std::same_as<decltype(g_flt), float>);
+    assert(abs_val(g_flt - 6.0f) < 1e-6f);
+
+    auto g_dbl = tgamma(4);
+    static_assert(std::same_as<decltype(g_dbl), double>);
+    assert(abs_val(g_dbl - 6.0) < 1e-12);
+
+    std::cout << "[OK] complex<T> parametrizado, compatibilidad por defecto std::complex<double> y wrappers con FloatFallback verificados.\n";
   }
 
   std::cout << "\n¡Todos los tests de spec_functs pasaron exitosamente!\n";

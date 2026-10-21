@@ -1,35 +1,24 @@
 #ifndef GFIB_HPP_INCLUDED
 #define GFIB_HPP_INCLUDED
 
+#include "type_traits.hpp"
 #include <array>
-#include <complex>
 #include <concepts>
 #include <cstdint>
 #include <span>
-#include <type_traits>
 #include <vector>
 
 namespace gfib {
 
-// Trait para identificar std::complex
-template <typename T>
-struct is_complex : std::false_type {};
-
-template <typename T>
-struct is_complex<std::complex<T>> : std::true_type {};
-
-template <typename T>
-inline constexpr bool is_complex_v = is_complex<std::remove_cvref_t<T>>::value;
-
-template <typename T>
-concept ComplexNumber = is_complex_v<T>;
-
-template <typename T>
-concept Arithmetic = std::integral<T> || std::floating_point<T> || ComplexNumber<T> ||
-  requires(T a, T b) {
-    { a + b } -> std::convertible_to<T>;
-    { a * b } -> std::convertible_to<T>;
-  };
+using traits::complex;
+using traits::is_complex;
+using traits::is_complex_v;
+using traits::ComplexNumber;
+using traits::ComplexLike;
+using traits::Arithmetic;
+using traits::SemiringArithmetic;
+using traits::complex_value_t;
+using traits::to_floating_point_t;
 
 // Función genérica para calcular el término n-ésimo con coeficientes y valores pasados por span.
 // Soporta cualquier tipo aritmético (enteros, reales y complejos) sin requerir tipos estructurales de NTTP.

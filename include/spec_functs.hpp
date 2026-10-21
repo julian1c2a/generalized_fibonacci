@@ -1,7 +1,7 @@
 #ifndef SPEC_FUNCTS_HPP_INCLUDED
 #define SPEC_FUNCTS_HPP_INCLUDED
 
-#include <complex>
+#include "type_traits.hpp"
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -81,16 +81,14 @@ inline constexpr long double log2_9 = 3.1699250014423123629074778878956330175196
 inline constexpr long double log2_10 = 3.32192809488736234787031942948939017586483139302458L;
 } // namespace constants
 
-// Trait para identificar std::complex
-template <typename T> struct is_complex : std::false_type {};
-
-template <typename T> struct is_complex<std::complex<T>> : std::true_type {};
-
-template <typename T>
-inline constexpr bool is_complex_v = is_complex<std::remove_cvref_t<T>>::value;
-
-template <typename T>
-concept ComplexLike = is_complex_v<T>;
+// Traits comunes importados desde type_traits.hpp
+using traits::complex;
+using traits::is_complex;
+using traits::is_complex_v;
+using traits::ComplexNumber;
+using traits::ComplexLike;
+using traits::complex_value_t;
+using traits::to_floating_point_t;
 
 /* ==========================================================================
  * UTILIDADES BÁSICAS (floor, ceil, trunc, round, potencia entera, escalado)
@@ -350,80 +348,84 @@ constexpr RoundingDecomposition<T> decompose_rounding(T x) noexcept {
 }
 
 // Wrappers genéricos (reales y complejos)
-template <typename T> constexpr auto ceil(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto ceil(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
-      return std::complex<ValT>(ceil_real(x.real()), ceil_real(x.imag()));
+      return complex<ValT>(ceil_real(x.real()), ceil_real(x.imag()));
     } else {
-      return std::complex<double>(ceil_real(static_cast<double>(x.real())),
-                                  ceil_real(static_cast<double>(x.imag())));
+      return complex<FloatFallback>(ceil_real(static_cast<FloatFallback>(x.real())),
+                                    ceil_real(static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return ceil_real(x);
   } else {
-    return ceil_real(static_cast<double>(x));
+    return ceil_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto floor(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto floor(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
-      return std::complex<ValT>(floor_real(x.real()), floor_real(x.imag()));
+      return complex<ValT>(floor_real(x.real()), floor_real(x.imag()));
     } else {
-      return std::complex<double>(floor_real(static_cast<double>(x.real())),
-                                  floor_real(static_cast<double>(x.imag())));
+      return complex<FloatFallback>(floor_real(static_cast<FloatFallback>(x.real())),
+                                    floor_real(static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return floor_real(x);
   } else {
-    return floor_real(static_cast<double>(x));
+    return floor_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto trunc(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto trunc(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
-      return std::complex<ValT>(trunc_real(x.real()), trunc_real(x.imag()));
+      return complex<ValT>(trunc_real(x.real()), trunc_real(x.imag()));
     } else {
-      return std::complex<double>(trunc_real(static_cast<double>(x.real())),
-                                  trunc_real(static_cast<double>(x.imag())));
+      return complex<FloatFallback>(trunc_real(static_cast<FloatFallback>(x.real())),
+                                    trunc_real(static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return trunc_real(x);
   } else {
-    return trunc_real(static_cast<double>(x));
+    return trunc_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto round(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto round(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
-      return std::complex<ValT>(round_real(x.real()), round_real(x.imag()));
+      return complex<ValT>(round_real(x.real()), round_real(x.imag()));
     } else {
-      return std::complex<double>(round_real(static_cast<double>(x.real())),
-                                  round_real(static_cast<double>(x.imag())));
+      return complex<FloatFallback>(round_real(static_cast<FloatFallback>(x.real())),
+                                    round_real(static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return round_real(x);
   } else {
-    return round_real(static_cast<double>(x));
+    return round_real(static_cast<FloatFallback>(x));
   }
 }
 
 // Parte fraccionaria configurable
-template <typename T>
+template <std::floating_point FloatFallback = double, typename T>
 constexpr auto frac(const T &x, FracMode mode = FracMode::Defect) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
-      return std::complex<ValT>(frac(x.real(), mode), frac(x.imag(), mode));
+      return complex<ValT>(frac(x.real(), mode), frac(x.imag(), mode));
     } else {
-      return std::complex<double>(frac(static_cast<double>(x.real()), mode),
-                                  frac(static_cast<double>(x.imag()), mode));
+      return complex<FloatFallback>(frac(static_cast<FloatFallback>(x.real()), mode),
+                                    frac(static_cast<FloatFallback>(x.imag()), mode));
     }
   } else if constexpr (std::floating_point<T>) {
     switch (mode) {
@@ -439,28 +441,33 @@ constexpr auto frac(const T &x, FracMode mode = FracMode::Defect) noexcept {
       return frac_defect_real(x);
     }
   } else {
-    return 0.0;
+    return FloatFallback{0};
   }
 }
 
-template <typename T> constexpr auto frac_defect(const T &x) noexcept {
-  return frac(x, FracMode::Defect);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto frac_defect(const T &x) noexcept {
+  return frac<FloatFallback>(x, FracMode::Defect);
 }
 
-template <typename T> constexpr auto frac_excess(const T &x) noexcept {
-  return frac(x, FracMode::Excess);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto frac_excess(const T &x) noexcept {
+  return frac<FloatFallback>(x, FracMode::Excess);
 }
 
-template <typename T> constexpr auto frac_round(const T &x) noexcept {
-  return frac(x, FracMode::Round);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto frac_round(const T &x) noexcept {
+  return frac<FloatFallback>(x, FracMode::Round);
 }
 
-template <typename T> constexpr auto frac_trunc(const T &x) noexcept {
-  return frac(x, FracMode::Trunc);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto frac_trunc(const T &x) noexcept {
+  return frac<FloatFallback>(x, FracMode::Trunc);
 }
 
-template <typename T> constexpr auto round_remainder(const T &x) noexcept {
-  return frac(x, FracMode::Round);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto round_remainder(const T &x) noexcept {
+  return frac<FloatFallback>(x, FracMode::Round);
 }
 
 /* ==========================================================================
@@ -532,10 +539,10 @@ template <typename T> constexpr auto abs_val(T x) noexcept {
 }
 
 /**
- * @brief Raíz cuadrada de números complejos std::complex<T>.
+ * @brief Raíz cuadrada de números complejos complex<T>.
  */
-template <typename T>
-constexpr std::complex<T> sqrt_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> sqrt_complex(const complex<T> &z) noexcept {
   T u = z.real();
   T v = z.imag();
   if (u == T{0} && v == T{0})
@@ -567,25 +574,26 @@ constexpr std::complex<T> sqrt_complex(const std::complex<T> &z) noexcept {
       imag_part = -imag_part;
     real_part = v / (static_cast<T>(2) * imag_part);
   }
-  return std::complex<T>(real_part, imag_part);
+  return complex<T>(real_part, imag_part);
 }
 
 /**
  * @brief Raíz cuadrada genérica: sqrt(x)
  */
-template <typename T> constexpr auto sqrt(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto sqrt(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return sqrt_complex(x);
     } else {
-      return sqrt_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return sqrt_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return sqrt_real(x);
   } else {
-    return sqrt_real(static_cast<double>(x));
+    return sqrt_real(static_cast<FloatFallback>(x));
   }
 }
 
@@ -733,8 +741,8 @@ template <std::floating_point T> constexpr T log_real(T x) noexcept {
   return static_cast<T>(k) * static_cast<T>(constants::ln2) + ln_m;
 }
 
-template <typename T>
-constexpr std::complex<T> log_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> log_complex(const complex<T> &z) noexcept {
   T u = z.real();
   T v = z.imag();
   T au = u < T{0} ? -u : u;
@@ -752,28 +760,31 @@ constexpr std::complex<T> log_complex(const std::complex<T> &z) noexcept {
     mag = av * sqrt_real(T{1} + q * q);
   }
   T theta = atan2_real(v, u);
-  return std::complex<T>(log_real(mag), theta);
+  return complex<T>(log_real(mag), theta);
 }
 
-template <typename T> constexpr auto log(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto log(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return log_complex(x);
     } else {
-      return log_complex(std::complex<double>(static_cast<double>(x.real()),
-                                              static_cast<double>(x.imag())));
+      return log_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return log_real(x);
   } else {
-    return log_real(static_cast<double>(x));
+    return log_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename BaseT, typename ExpT>
+template <std::floating_point FloatFallback = double, typename BaseT, typename ExpT>
 constexpr auto pow(const BaseT &base, const ExpT &exponent) noexcept {
-  using CommonFloat = std::common_type_t<double, BaseT, ExpT>;
+  using CommonFloat = std::conditional_t<
+      std::is_floating_point_v<std::common_type_t<BaseT, ExpT>>,
+      std::common_type_t<BaseT, ExpT>, FloatFallback>;
   if (base == BaseT{0}) {
     if (exponent == ExpT{0})
       return CommonFloat{1};
@@ -793,23 +804,27 @@ constexpr auto pow(const BaseT &base, const ExpT &exponent) noexcept {
                   log_real(static_cast<CommonFloat>(base)));
 }
 
-template <typename BaseT, typename ExpT>
+template <std::floating_point FloatFallback = double, typename BaseT, typename ExpT>
 constexpr auto exp_base(const BaseT &base, const ExpT &x) noexcept {
-  return pow(base, x);
+  return pow<FloatFallback>(base, x);
 }
 
-template <typename BaseT, typename ArgT>
+template <std::floating_point FloatFallback = double, typename BaseT, typename ArgT>
 constexpr auto log_base(const BaseT &base, const ArgT &x) noexcept {
-  using CommonFloat = std::common_type_t<double, BaseT, ArgT>;
+  using CommonFloat = std::conditional_t<
+      std::is_floating_point_v<std::common_type_t<BaseT, ArgT>>,
+      std::common_type_t<BaseT, ArgT>, FloatFallback>;
   return log(static_cast<CommonFloat>(x)) / log(static_cast<CommonFloat>(base));
 }
 
-template <typename T> constexpr auto log10(const T &x) noexcept {
-  return log(x) / static_cast<double>(constants::ln10);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto log10(const T &x) noexcept {
+  return log(x) / static_cast<FloatFallback>(constants::ln10);
 }
 
-template <typename T> constexpr auto log2(const T &x) noexcept {
-  return log(x) * static_cast<double>(constants::inv_ln2);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto log2(const T &x) noexcept {
+  return log(x) * static_cast<FloatFallback>(constants::inv_ln2);
 }
 
 /* ==========================================================================
@@ -1016,79 +1031,80 @@ template <std::floating_point T> constexpr T coth_real(T x) noexcept {
  * TRIGONOMÉTRICAS E HIPERBÓLICAS COMPLEJAS
  * ========================================================================== */
 
-template <typename T>
-constexpr std::complex<T> exp_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> exp_complex(const complex<T> &z) noexcept {
   T eu = exp_real(z.real());
   T cos_v = cos_real(z.imag());
   T sin_v = sin_real(z.imag());
-  return std::complex<T>(eu * cos_v, eu * sin_v);
+  return complex<T>(eu * cos_v, eu * sin_v);
 }
 
-template <typename T> constexpr auto exp(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto exp(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return exp_complex(x);
     } else {
-      return exp_complex(std::complex<double>(static_cast<double>(x.real()),
-                                              static_cast<double>(x.imag())));
+      return exp_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return exp_real(x);
   } else {
-    return exp_real(static_cast<double>(x));
+    return exp_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T>
-constexpr std::complex<T> sin_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> sin_complex(const complex<T> &z) noexcept {
   T u = z.real();
   T v = z.imag();
-  return std::complex<T>(sin_real(u) * cosh_real(v),
-                         cos_real(u) * sinh_real(v));
+  return complex<T>(sin_real(u) * cosh_real(v),
+                    cos_real(u) * sinh_real(v));
 }
 
-template <typename T>
-constexpr std::complex<T> cos_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> cos_complex(const complex<T> &z) noexcept {
   T u = z.real();
   T v = z.imag();
-  return std::complex<T>(cos_real(u) * cosh_real(v),
-                         -sin_real(u) * sinh_real(v));
+  return complex<T>(cos_real(u) * cosh_real(v),
+                    -sin_real(u) * sinh_real(v));
 }
 
-template <typename T>
-constexpr std::complex<T> tan_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> tan_complex(const complex<T> &z) noexcept {
   return sin_complex(z) / cos_complex(z);
 }
 
-template <typename T>
-constexpr std::complex<T> cot_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> cot_complex(const complex<T> &z) noexcept {
   return cos_complex(z) / sin_complex(z);
 }
 
-template <typename T>
-constexpr std::complex<T> sinh_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> sinh_complex(const complex<T> &z) noexcept {
   T u = z.real();
   T v = z.imag();
-  return std::complex<T>(sinh_real(u) * cos_real(v),
-                         cosh_real(u) * sin_real(v));
+  return complex<T>(sinh_real(u) * cos_real(v),
+                    cosh_real(u) * sin_real(v));
 }
 
-template <typename T>
-constexpr std::complex<T> cosh_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> cosh_complex(const complex<T> &z) noexcept {
   T u = z.real();
   T v = z.imag();
-  return std::complex<T>(cosh_real(u) * cos_real(v),
-                         sinh_real(u) * sin_real(v));
+  return complex<T>(cosh_real(u) * cos_real(v),
+                    sinh_real(u) * sin_real(v));
 }
 
-template <typename T>
-constexpr std::complex<T> tanh_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> tanh_complex(const complex<T> &z) noexcept {
   return sinh_complex(z) / cosh_complex(z);
 }
 
-template <typename T>
-constexpr std::complex<T> coth_complex(const std::complex<T> &z) noexcept {
+template <std::floating_point T = double>
+constexpr complex<T> coth_complex(const complex<T> &z) noexcept {
   return cosh_complex(z) / sinh_complex(z);
 }
 
@@ -1097,147 +1113,157 @@ constexpr std::complex<T> coth_complex(const std::complex<T> &z) noexcept {
  * ========================================================================== */
 
 // Seno: sin
-template <typename T> constexpr auto sin(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto sin(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return sin_complex(x);
     } else {
-      return sin_complex(std::complex<double>(static_cast<double>(x.real()),
-                                              static_cast<double>(x.imag())));
+      return sin_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return sin_real(x);
   } else {
-    return sin_real(static_cast<double>(x));
+    return sin_real(static_cast<FloatFallback>(x));
   }
 }
 
 // Coseno: cos
-template <typename T> constexpr auto cos(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto cos(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return cos_complex(x);
     } else {
-      return cos_complex(std::complex<double>(static_cast<double>(x.real()),
-                                              static_cast<double>(x.imag())));
+      return cos_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return cos_real(x);
   } else {
-    return cos_real(static_cast<double>(x));
+    return cos_real(static_cast<FloatFallback>(x));
   }
 }
 
 // Tangente: tan
-template <typename T> constexpr auto tan(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto tan(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return tan_complex(x);
     } else {
-      return tan_complex(std::complex<double>(static_cast<double>(x.real()),
-                                              static_cast<double>(x.imag())));
+      return tan_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return tan_real(x);
   } else {
-    return tan_real(static_cast<double>(x));
+    return tan_real(static_cast<FloatFallback>(x));
   }
 }
 
 // Cotangente: cot / cotan
-template <typename T> constexpr auto cot(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto cot(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return cot_complex(x);
     } else {
-      return cot_complex(std::complex<double>(static_cast<double>(x.real()),
-                                              static_cast<double>(x.imag())));
+      return cot_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return cot_real(x);
   } else {
-    return cot_real(static_cast<double>(x));
+    return cot_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto cotan(const T &x) noexcept {
-  return cot(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto cotan(const T &x) noexcept {
+  return cot<FloatFallback>(x);
 }
 
 // Seno hiperbólico: sinh
-template <typename T> constexpr auto sinh(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto sinh(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return sinh_complex(x);
     } else {
-      return sinh_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return sinh_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return sinh_real(x);
   } else {
-    return sinh_real(static_cast<double>(x));
+    return sinh_real(static_cast<FloatFallback>(x));
   }
 }
 
 // Coseno hiperbólico: cosh
-template <typename T> constexpr auto cosh(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto cosh(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return cosh_complex(x);
     } else {
-      return cosh_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return cosh_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return cosh_real(x);
   } else {
-    return cosh_real(static_cast<double>(x));
+    return cosh_real(static_cast<FloatFallback>(x));
   }
 }
 
 // Tangente hiperbólica: tanh
-template <typename T> constexpr auto tanh(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto tanh(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return tanh_complex(x);
     } else {
-      return tanh_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return tanh_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return tanh_real(x);
   } else {
-    return tanh_real(static_cast<double>(x));
+    return tanh_real(static_cast<FloatFallback>(x));
   }
 }
 
 // Cotangente hiperbólica: coth / cotanh
-template <typename T> constexpr auto coth(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto coth(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return coth_complex(x);
     } else {
-      return coth_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return coth_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return coth_real(x);
   } else {
-    return coth_real(static_cast<double>(x));
+    return coth_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto cotanh(const T &x) noexcept {
-  return coth(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto cotanh(const T &x) noexcept {
+  return coth<FloatFallback>(x);
 }
 
 /* ==========================================================================
@@ -1372,51 +1398,51 @@ template <std::floating_point T> constexpr T acoth_real(T x) noexcept {
 }
 
 // Inversas complejas
-template <typename T>
-constexpr std::complex<T> asinh_complex(const std::complex<T> &z) noexcept {
-  std::complex<T> one(T{1}, T{0});
+template <std::floating_point T = double>
+constexpr complex<T> asinh_complex(const complex<T> &z) noexcept {
+  complex<T> one(T{1}, T{0});
   return log_complex(z + sqrt_complex(z * z + one));
 }
 
-template <typename T>
-constexpr std::complex<T> acosh_complex(const std::complex<T> &z) noexcept {
-  std::complex<T> one(T{1}, T{0});
+template <std::floating_point T = double>
+constexpr complex<T> acosh_complex(const complex<T> &z) noexcept {
+  complex<T> one(T{1}, T{0});
   return log_complex(z + sqrt_complex(z - one) * sqrt_complex(z + one));
 }
 
-template <typename T>
-constexpr std::complex<T> atanh_complex(const std::complex<T> &z) noexcept {
-  std::complex<T> one(T{1}, T{0});
+template <std::floating_point T = double>
+constexpr complex<T> atanh_complex(const complex<T> &z) noexcept {
+  complex<T> one(T{1}, T{0});
   return static_cast<T>(0.5) * (log_complex(one + z) - log_complex(one - z));
 }
 
-template <typename T>
-constexpr std::complex<T> acoth_complex(const std::complex<T> &z) noexcept {
-  std::complex<T> one(T{1}, T{0});
+template <std::floating_point T = double>
+constexpr complex<T> acoth_complex(const complex<T> &z) noexcept {
+  complex<T> one(T{1}, T{0});
   return atanh_complex(one / z);
 }
 
-template <typename T>
-constexpr std::complex<T> asin_complex(const std::complex<T> &z) noexcept {
-  std::complex<T> i_unit(T{0}, T{1});
+template <std::floating_point T = double>
+constexpr complex<T> asin_complex(const complex<T> &z) noexcept {
+  complex<T> i_unit(T{0}, T{1});
   return -i_unit * asinh_complex(i_unit * z);
 }
 
-template <typename T>
-constexpr std::complex<T> acos_complex(const std::complex<T> &z) noexcept {
-  std::complex<T> half_pi_val(static_cast<T>(constants::half_pi), T{0});
+template <std::floating_point T = double>
+constexpr complex<T> acos_complex(const complex<T> &z) noexcept {
+  complex<T> half_pi_val(static_cast<T>(constants::half_pi), T{0});
   return half_pi_val - asin_complex(z);
 }
 
-template <typename T>
-constexpr std::complex<T> atan_complex(const std::complex<T> &z) noexcept {
-  std::complex<T> i_unit(T{0}, T{1});
+template <std::floating_point T = double>
+constexpr complex<T> atan_complex(const complex<T> &z) noexcept {
+  complex<T> i_unit(T{0}, T{1});
   return -i_unit * atanh_complex(i_unit * z);
 }
 
-template <typename T>
-constexpr std::complex<T> acot_complex(const std::complex<T> &z) noexcept {
-  std::complex<T> one(T{1}, T{0});
+template <std::floating_point T = double>
+constexpr complex<T> acot_complex(const complex<T> &z) noexcept {
+  complex<T> one(T{1}, T{0});
   return atan_complex(one / z);
 }
 
@@ -1425,187 +1451,205 @@ constexpr std::complex<T> acot_complex(const std::complex<T> &z) noexcept {
  * ========================================================================== */
 
 // Arcoseno: asin / arcsin
-template <typename T> constexpr auto asin(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto asin(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return asin_complex(x);
     } else {
-      return asin_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return asin_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return asin_real(x);
   } else {
-    return asin_real(static_cast<double>(x));
+    return asin_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto arcsin(const T &x) noexcept {
-  return asin(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arcsin(const T &x) noexcept {
+  return asin<FloatFallback>(x);
 }
 
 // Arcocoseno: acos / arccos
-template <typename T> constexpr auto acos(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto acos(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return acos_complex(x);
     } else {
-      return acos_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return acos_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return acos_real(x);
   } else {
-    return acos_real(static_cast<double>(x));
+    return acos_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto arccos(const T &x) noexcept {
-  return acos(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arccos(const T &x) noexcept {
+  return acos<FloatFallback>(x);
 }
 
 // Arcotangente: atan / arctan / atan2
-template <typename T> constexpr auto atan(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto atan(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return atan_complex(x);
     } else {
-      return atan_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return atan_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return atan_real(x);
   } else {
-    return atan_real(static_cast<double>(x));
+    return atan_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto arctan(const T &x) noexcept {
-  return atan(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arctan(const T &x) noexcept {
+  return atan<FloatFallback>(x);
 }
 
-template <typename Y, typename X>
+template <std::floating_point FloatFallback = double, typename Y, typename X>
 constexpr auto atan2(const Y &y, const X &x) noexcept {
   using CommonFloat = std::conditional_t<
       std::is_floating_point_v<std::common_type_t<Y, X>>,
-      std::common_type_t<Y, X>, double>;
+      std::common_type_t<Y, X>, FloatFallback>;
   return atan2_real(static_cast<CommonFloat>(y), static_cast<CommonFloat>(x));
 }
 
 // Arcocotangente: acot / arccot / arcotan
-template <typename T> constexpr auto acot(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto acot(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return acot_complex(x);
     } else {
-      return acot_complex(std::complex<double>(static_cast<double>(x.real()),
-                                               static_cast<double>(x.imag())));
+      return acot_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                 static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return acot_real(x);
   } else {
-    return acot_real(static_cast<double>(x));
+    return acot_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto arccot(const T &x) noexcept {
-  return acot(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arccot(const T &x) noexcept {
+  return acot<FloatFallback>(x);
 }
 
-template <typename T> constexpr auto arcotan(const T &x) noexcept {
-  return acot(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arcotan(const T &x) noexcept {
+  return acot<FloatFallback>(x);
 }
 
 // Arcoseno hiperbólico: asinh / arcsinh
-template <typename T> constexpr auto asinh(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto asinh(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return asinh_complex(x);
     } else {
-      return asinh_complex(std::complex<double>(static_cast<double>(x.real()),
-                                                static_cast<double>(x.imag())));
+      return asinh_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                  static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return asinh_real(x);
   } else {
-    return asinh_real(static_cast<double>(x));
+    return asinh_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto arcsinh(const T &x) noexcept {
-  return asinh(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arcsinh(const T &x) noexcept {
+  return asinh<FloatFallback>(x);
 }
 
 // Arcocoseno hiperbólico: acosh / arccosh
-template <typename T> constexpr auto acosh(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto acosh(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return acosh_complex(x);
     } else {
-      return acosh_complex(std::complex<double>(static_cast<double>(x.real()),
-                                                static_cast<double>(x.imag())));
+      return acosh_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                  static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return acosh_real(x);
   } else {
-    return acosh_real(static_cast<double>(x));
+    return acosh_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto arccosh(const T &x) noexcept {
-  return acosh(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arccosh(const T &x) noexcept {
+  return acosh<FloatFallback>(x);
 }
 
 // Arcotangente hiperbólica: atanh / arctanh
-template <typename T> constexpr auto atanh(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto atanh(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return atanh_complex(x);
     } else {
-      return atanh_complex(std::complex<double>(static_cast<double>(x.real()),
-                                                static_cast<double>(x.imag())));
+      return atanh_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                  static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return atanh_real(x);
   } else {
-    return atanh_real(static_cast<double>(x));
+    return atanh_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto arctanh(const T &x) noexcept {
-  return atanh(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arctanh(const T &x) noexcept {
+  return atanh<FloatFallback>(x);
 }
 
 // Arcocotangente hiperbólica: acoth / arccoth / arcotanh
-template <typename T> constexpr auto acoth(const T &x) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto acoth(const T &x) noexcept {
   if constexpr (ComplexLike<T>) {
     using ValT = typename std::remove_cvref_t<T>::value_type;
     if constexpr (std::floating_point<ValT>) {
       return acoth_complex(x);
     } else {
-      return acoth_complex(std::complex<double>(static_cast<double>(x.real()),
-                                                static_cast<double>(x.imag())));
+      return acoth_complex(complex<FloatFallback>(static_cast<FloatFallback>(x.real()),
+                                                  static_cast<FloatFallback>(x.imag())));
     }
   } else if constexpr (std::floating_point<T>) {
     return acoth_real(x);
   } else {
-    return acoth_real(static_cast<double>(x));
+    return acoth_real(static_cast<FloatFallback>(x));
   }
 }
 
-template <typename T> constexpr auto arccoth(const T &x) noexcept {
-  return acoth(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arccoth(const T &x) noexcept {
+  return acoth<FloatFallback>(x);
 }
 
-template <typename T> constexpr auto arcotanh(const T &x) noexcept {
-  return acoth(x);
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto arcotanh(const T &x) noexcept {
+  return acoth<FloatFallback>(x);
 }
 
 /* ==========================================================================
@@ -1690,29 +1734,39 @@ template <std::floating_point T> constexpr T lgamma_real(T z) noexcept {
          (z + T{0.5}) * log_real(t) - t + log_real(x);
 }
 
-template <typename T> constexpr auto gamma(const T &z) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto gamma(const T &z) noexcept {
   if constexpr (std::floating_point<T>) {
     return gamma_real(z);
   } else {
-    return gamma_real(static_cast<double>(z));
+    return gamma_real(static_cast<FloatFallback>(z));
   }
 }
 
-template <typename T> constexpr auto lgamma(const T &z) noexcept {
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto lgamma(const T &z) noexcept {
   if constexpr (std::floating_point<T>) {
     return lgamma_real(z);
   } else {
-    return lgamma_real(static_cast<double>(z));
+    return lgamma_real(static_cast<FloatFallback>(z));
   }
+}
+
+// Alias estándar para gamma de Euler (evita colisión con funciones obsoletas de C <math.h>)
+template <std::floating_point FloatFallback = double, typename T>
+constexpr auto tgamma(const T &z) noexcept {
+  return gamma<FloatFallback>(z);
 }
 
 /* ==========================================================================
  * FUNCIÓN BETA DE EULER: B(x, y) = Gamma(x) * Gamma(y) / Gamma(x + y)
  * ========================================================================== */
 
-template <typename T, typename U>
+template <std::floating_point FloatFallback = double, typename T, typename U>
 constexpr auto beta(const T &x, const U &y) noexcept {
-  using CommonFloat = std::common_type_t<double, T, U>;
+  using CommonFloat = std::conditional_t<
+      std::is_floating_point_v<std::common_type_t<T, U>>,
+      std::common_type_t<T, U>, FloatFallback>;
   CommonFloat fx = static_cast<CommonFloat>(x);
   CommonFloat fy = static_cast<CommonFloat>(y);
 
@@ -1725,9 +1779,11 @@ constexpr auto beta(const T &x, const U &y) noexcept {
   return exp(log_b);
 }
 
-template <typename T, typename U>
+template <std::floating_point FloatFallback = double, typename T, typename U>
 constexpr auto lbeta(const T &x, const U &y) noexcept {
-  using CommonFloat = std::common_type_t<double, T, U>;
+  using CommonFloat = std::conditional_t<
+      std::is_floating_point_v<std::common_type_t<T, U>>,
+      std::common_type_t<T, U>, FloatFallback>;
   CommonFloat fx = static_cast<CommonFloat>(x);
   CommonFloat fy = static_cast<CommonFloat>(y);
   return lgamma(fx) + lgamma(fy) - lgamma(fx + fy);

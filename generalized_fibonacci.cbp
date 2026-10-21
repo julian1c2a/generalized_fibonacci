@@ -36,10 +36,12 @@
 		<Unit filename="include/gfib.hpp" />
 		<Unit filename="include/poly.hpp" />
 		<Unit filename="include/spec_functs.hpp" />
+		<Unit filename="include/type_traits.hpp" />
 		<Unit filename="main.cpp" />
 		<Unit filename="tests/test_gfib.cpp" />
 		<Unit filename="tests/test_poly.cpp" />
 		<Unit filename="tests/test_spec_functs.cpp" />
+		<Unit filename="tests/test_type_traits.cpp" />
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>
